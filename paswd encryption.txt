@@ -1,0 +1,70 @@
+main.py
+
+
+from flask import Flask, request, render_template, jsonify
+from flask_mysqldb import MySQL
+import MySQLdb.cursors
+import hashlib
+
+app = Flask(__name__)
+
+app.secret_key = 'aaa'
+
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = 'naveen213'
+app.config['MYSQL_DB'] = 'clinicalfirst'
+
+mysql = MySQL(app)
+
+@app.route('/', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        user_name = request.form['user_name']
+        user_mail_id = request.form['user_mail_id']
+        user_phone_number = request.form['user_phone_number']
+        hashedpassword = hashlib.sha256(request.form['user_password'].encode())
+        user_password = hashedpassword.hexdigest()
+        user_ip = request.form['user_ip']
+        user_date_created = request.form['user_date_created']
+        user_device = request.form['user_device']
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute('insert into user_signup values(null,%s,%s,%s,%s,%s,%s,%s)', (
+        user_name, user_mail_id, user_phone_number, user_password, user_ip, user_date_created, user_device))
+        mysql.connection.commit()
+        return 'Registeration successfull'
+    else:
+        return render_template('register.html')
+
+@app.route('/login', methods=['POST', 'GET'])
+def login():
+    if request.method == 'POST':
+        user_mail_id = request.form['user_mail_id']
+        hashedpassword = hashlib.sha256(request.form['user_password'].encode())
+        user_password = hashedpassword.hexdigest()
+        #print(user_mail_id)
+        #print(user_password)
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("select * from user_signup where USER_MAIL_ID=%s and USER_PASSWORD=%s",(user_mail_id,user_password))
+        user_signup = cursor.fetchone()
+        print(user_signup==None)
+        mysql.connection.commit()
+        if user_signup==None:
+            return 'Invalid Email or Password'
+
+        return 'Logged in'
+    else:
+        return render_template('login.html')
+ 
+@app.route('/allusers/<int:USER_SIGNUP_ID>', methods=['GET'])
+def allusers(USER_SIGNUP_ID):
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cursor.execute("select * from user_signup where USER_SIGNUP_ID={}".format(USER_SIGNUP_ID))
+    user_signup = cursor.fetchone()
+    return jsonify(user_signup)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+***********************************************************************************************************
